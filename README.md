@@ -1,3 +1,5 @@
+Technologies used in - Machine Learning, Image Processing, Neural Networks
+
 # FYP (Final Year Projet)
 
 This is a Driver Assistance System you can use in your Vehicle with a mono dash camera. 
@@ -23,3 +25,4 @@ Copy the below folders and files from the second repository to our repository.
 
 
 Then in the main directory you need to create a folder named "weights" and you should download the weights from the internet to this "weights" folder. 
+
