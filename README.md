@@ -25,4 +25,9 @@ Copy the below folders and files from the second repository to our repository.
 
 
 Then in the main directory you need to create a folder named "weights" and you should download the weights from the internet to this "weights" folder. 
+The following links for the weights downloads have been given below.
+
+|Image Size| Backbone| FPS| mAP| Weights|
+|:------------:|:------------:|:------------:|:------------:|:------------:|
+
 
