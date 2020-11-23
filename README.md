@@ -28,6 +28,6 @@ Then in the main directory you need to create a folder named "weights" and you s
 The following links for the weights downloads have been given below.
 
 |Image Size| Backbone| FPS| mAP| Weights|
-|:------------:|:------------:|:------------:|:------------:|:------------:|
+|:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|
 
 
