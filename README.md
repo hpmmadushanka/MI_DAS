@@ -1,4 +1,4 @@
-# FYP
+# FYP (Final Year Projet)
 
 This is a Driver Assistance System you can use in your Vehicle with a mono dash camera. 
 
@@ -16,11 +16,10 @@ step 2 - clone https://github.com/dbolya/yolact.git to an another folder ( Becau
 Copy the below folders and files from the second repository to our repository.
 1. Layers
 2. Utils
-3. 
+3. backbone.py
+4. run_coco_eval.py
+5. train.py
+6. yolact.py
 
 
-clone this repository
-
-go to FYP repository - cd FYP
-
-Then clone - https://github.com/dbolya/yolact.git
+Then in the main directory you need to create a folder named "weights" and you should download the weights from the internet to this "weights" folder. 
