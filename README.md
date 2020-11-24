@@ -42,6 +42,6 @@ python object_tracker.py --video ./(Location of the input video) --output ./data
 
 We get the markings of the most dangerous vehicles using ML as shown in the below image.
 
-![Test Image 4](https://github.com/isuru9625/FYP/blob/main/images/001.jpg 112)
+![](images/001.jpg)
 
 
