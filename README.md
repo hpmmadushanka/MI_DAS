@@ -40,6 +40,8 @@ step 6 -
 Finally you need to run - 
 
 python object_tracker.py --video ./(Location of the input video) --output ./data/video/result.avi
+
+
 eg : - python object_tracker.py --video ./data/video/001.mp4 --output ./data/video/result.avi
 
 We get the markings of the most dangerous vehicles using ML as shown in the below image.
