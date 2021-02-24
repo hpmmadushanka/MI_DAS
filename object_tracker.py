@@ -83,7 +83,9 @@ def main(_argv):
 
     if FLAGS.tiny:
         yolo = YoloV3Tiny(classes=FLAGS.num_classes)
+        print(2)
     else:
+        print(1)
         yolo = YoloV3(classes=FLAGS.num_classes)
 
     yolo.load_weights(FLAGS.weights)
