@@ -1,8 +1,8 @@
-Technologies used in - Machine Learning, Image Processing, Neural Networks
+Technologies used in - YOLOv3, YOLACT, Segmentation, Deep SORT, Kalman Filter and Smoother
 
 # FYP (Final Year Projet)
 
-This is a Driver Assistance System you can use in your Vehicle with a mono dash camera. 
+This is a Driver Assistance System which can be used to predict the vehicles' trajectories. This system warns the driver if there is a danger ahead.
 
 
 
@@ -36,13 +36,12 @@ step 4 - run the below command in the cmd to convert the yolov3.weights file int
 
 step 5 - put your video inside the folder, "data/video".
 
-step 6 - 
-Finally you need to run - 
+step 6 - Finally you need to run 
 
 python object_tracker.py --video ./(Location of the input video) --output ./data/video/result.avi
 
 
-eg : - python object_tracker.py --video ./data/video/001.mp4 --output ./data/video/result.avi
+eg : python object_tracker.py --video ./data/video/001.mp4 --output ./data/video/result.avi
 
 We get the markings of the most dangerous vehicles using ML as shown in the below image.
 
