@@ -21,8 +21,7 @@ step 2 - download yolov3.weights file from here and put it inside the weights fi
 
 step 3 - download yolact.pth file from here and put it inside the weights file. (we used the third one(yolact_base_54_800000.pth))
 
-Then in the main directory you need to create a folder named "weights" and you should download the weights from the internet to this "weights" folder. 
-The following links for the weights downloads have been given below.
+
 
 |Image Size| Backbone| FPS| mAP| Weights|
 |:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|
