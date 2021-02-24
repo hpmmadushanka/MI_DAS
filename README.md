@@ -8,7 +8,7 @@ This is a Driver Assistance System you can use in your Vehicle with a mono dash 
 
 step 1 - Clone this repository 
 
-step 2 - download yolov3.weights file from here and put it inside the weights file. (we used the third(YOLOv3-608) one)
+step 2 - download yolov3.weights file from here and put it inside the weights file. (we used the thir oned(YOLOv3-608))
 
 |Model| Train| Test| mAP| FLOPS| Weights|
 |:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|
@@ -19,7 +19,7 @@ step 2 - download yolov3.weights file from here and put it inside the weights fi
 
 
 
-step 3 - download yolact.pth file from here and put it inside the weights file. (we used the third(yolact_base_54_800000.pth) one)
+step 3 - download yolact.pth file from here and put it inside the weights file. (we used the third one(yolact_base_54_800000.pth))
 
 Then in the main directory you need to create a folder named "weights" and you should download the weights from the internet to this "weights" folder. 
 The following links for the weights downloads have been given below.
