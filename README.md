@@ -10,8 +10,8 @@ step 1 - Clone this repository (Our main repository)
 
 step 2 - download yolov3.weights file from here and put it in wwights file. 
 
-|Model| Train| Test| mAP| FLOPS| Weights|
-|:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|
+|Model| Train| Test| mAP| Weights|
+|:------------------------:|:------------------------:|:------------------------:|:------------------------:|:------------------------:|
 |YOLOv3-320	|COCO trainval|test-dev	|51.5|[weights](https://pjreddie.com/media/files/yolov3.weights)| 	
 |YOLOv3-416|COCO trainval|test-dev |55.3|[weights](https://pjreddie.com/media/files/yolov3.weights)| 	
 |YOLOv3-608	|COCO trainval|test-dev |57.9|[weights](https://pjreddie.com/media/files/yolov3.weights)| 	
