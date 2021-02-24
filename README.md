@@ -6,7 +6,7 @@ This is a Driver Assistance System you can use in your Vehicle with a mono dash 
 
 
 
-step 1 - Clone this repository (Our main repository)
+step 1 - Clone this repository 
 
 step 2 - download yolov3.weights file from here and put it inside the weights file. (we used the third(YOLOv3-608) one)
 
