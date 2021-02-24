@@ -1,4 +1,6 @@
+import object_tracker
 from data import COCODetection, get_label_map, MEANS, COLORS
+import yolact
 from yolact import Yolact
 from utils.augmentations import BaseTransform, FastBaseTransform, Resize
 from utils.functions import MovingAverage, ProgressBar
@@ -7,6 +9,9 @@ from utils import timer
 from utils.functions import SavePath
 from layers.output_utils import postprocess, undo_image_transformation
 import pycocotools
+from numpy import *
+from scipy.interpolate import *
+from pykalman import KalmanFilter
 
 from data import cfg, set_cfg, set_dataset
 
@@ -115,6 +120,9 @@ def parse_args(argv=None):
                         help='An input folder of images and output folder to save detected images. Should be in the format input->output.')
     parser.add_argument('--video', default=None, type=str,
                         help='A path to a video to evaluate on. Passing in a number will use that index webcam.')
+						
+    parser.add_argument('--yolat', default=None, type=yolact.Yolact,
+                        help='Single Object of Yolact')
     parser.add_argument('--video_multiframe', default=1, type=int,
                         help='The number of frames to evaluate in parallel to make videos play at higher fps.')
     parser.add_argument('--score_threshold', default=0, type=float,
@@ -152,7 +160,8 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
     """
     Note: If undo_transform=False then im_h and im_w are allowed to be None.
     """
-	
+    global points 
+    points = []
     #print("image " + str(img))
     if undo_transform:
         img_numpy = undo_image_transformation(img, w, h)
@@ -210,22 +219,9 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
         torch.cuda.memory_summary(device=None, abbreviated=False)
         # After this, mask is of size [num_dets, h, w, 1]
         masks = masks[:num_dets_to_consider, :, :, None]
-        print("number of detections " + str(num_dets_to_consider))
-        #print(masks)
-        #print(len(masks[0]))
-        #print(len(masks[0][2]))
-        #print(len(masks[0][0]))
-        #print(len(masks[0][150]))
-        #print(len(masks[0][0]))
-        #print(masks[0])
-        #print(masks[0][100])
-        #print(masks[0][100][0])      
-        #print(masks[0][100][30])
-        #print(masks[0][150][175])
-        #print(masks[0][136][310])
+        #print("number of detections " + str(num_dets_to_consider))
         
-        #print(masks[0][193][105])
-        #print(masks[0][145][147])
+        
         # Prepare the RGB images for each mask given their color (size [num_dets, h, w, 1])
         colors = torch.cat([get_color(j, on_gpu=img_gpu.device.index).view(1, 1, 1, 3) for j in range(num_dets_to_consider)], dim=0)
         #print("colors are " + str(colors))
@@ -339,7 +335,7 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
                 _class = cfg.dataset.class_names[classes[j]]
              
             
-            print("boxes" + str(boxes))
+            #print("boxes" + str(boxes))
             x1, y1, x2, y2 = boxes[j, :]
 			
 			
@@ -349,7 +345,7 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
 			
 			
 			
-            print("score is " +str(score))
+            #print("score is " +str(score))
 			
             mid_x = int(round((x1 + x2)/2,0))
             mid_y = int(round((y1 + y2)/2,0))
@@ -361,8 +357,8 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
 			
 			
 			
-            print("b_boxes " + str(b_boxes))
-            print("s_scores " + str(s_scores))
+            #print("b_boxes " + str(b_boxes))
+            #print("s_scores " + str(s_scores))
             
 			
             #print(color)
@@ -371,7 +367,7 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
                 #print(len(img_numpy[0]))
                 area_of_frame = len(img_numpy) * len(img_numpy[0])
 
-                print("area of frame is: " + str(area_of_frame))
+                #print("area of frame is: " + str(area_of_frame))
                 #print(img_numpy)
 				
                 rectangle_reference = img_numpy[y1][x1]
@@ -395,72 +391,45 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
                 #print(y_difference)
 
                 percentage = vehicle_area/area_of_frame
-                print("percentage : " + str(percentage))
+                #print("percentage : " + str(percentage))
 
-                if(0.85>percentage>0 and score>0.6 and _class == 'car'):
+
+				#Check the probability of a vehicle to consider the most closest vehicles
+                if(0.85>percentage>0 and score>0.4 and _class == 'car'):
 
 	    
-                    for i in range(0,11):
-                        cv2.rectangle(img_numpy, (x1, y1+(y_difference//10)*i), (x2, y1+(y_difference//10)*i+1), color, 1)
-                        y_value = y1+(y_difference//10)*i
+                    for i in range(0,21):
+                        cv2.rectangle(img_numpy, (x1, y1+(y_difference//20)*i), (x2, y1+(y_difference//20)*i+1), color, 1)
+                        #y_value = y1+(y_difference//20)*i
+                        y_value = y2-(y_difference//20)*i
 
                         if(y_value < y2-1):
                             y_values.append(y_value)
                     
-                    print("y values : " + str(y_values))
-                                    
-                            
-
+                    #print("y values : " + str(y_values))
                     
-
-                             
-                                    
-                                    
-                    #t = (y1+y2)//2
-                    #cv2.rectangle(img_numpy, (x1, y1), (x2, t), color, 1)
-                    #print(len(masks[0]))
-                    #print(len(masks[0][0]))
+                    y_values.reverse()
+              
                     rectangle_reference = img_numpy[y1][x1]
-                    #print(rectangle_reference)
-                    print(x1,y1,x2,y2)
-                                    
-                    #print(img_numpy[y1][x1])
-                    
-                    #print(masks[0][151][136])
-                                    
-                    #print(masks[0][y1][x1])
-                    #print(masks[0][y1-1][x1-1])
-                    #print(masks[0][y1+1][x1])
-                    #print(masks[0][y1+1][x1+1])
-                    #print(masks[0][y1+50][x1+50])
-                                    
-                                    
-                    #print(masks[0][y1][x1] == 0)
-                    #print(masks[0][y1-1][x1-1] == 0)
-                    #print(masks[0][y1+1][x1] == 0)
-                    #print(masks[0][y1+1][x1+1] == 0)
-                    #print(masks[0][y1+50][x1+50] == 0)
-                                    
-                    #print(img_numpy[100][8])
-                    #print(len(masks[0]))
+                 
                     relevant = 0
                     #count = 0
                     m_min=0
                     m_max=0
 
                     #masks_color_summand[y][x][0]
-                    print("x_min is " + str(x_min))
+                    #print("x_min is " + str(x_min))
                     #print("dddd" + str(masks[0][193][1]))
                     #for k in range(x_min,x_min+50):
                     for k in range(x1-1,x2-1):
-                        for i in range(y2-1,-1,-1):
+                        for i in range(y2-1,y1,-1):
                             #print(k,i)
                             #count = count +1
                                     
                             #if(masks[0][i][k] ==1):
                             #if(nump[i][k] ==1):
                             if(masks_color_summand[i][k][0] !=0):
-                                print(masks[0][i][k])
+                                
                                 m_min = (k,i)
                                 break
                         if(m_min!=0):
@@ -468,24 +437,24 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
 
 
 
-                    print("m_min is(from left) " + str(m_min))
+                    #print("m_min is(from left) " + str(m_min))
                     
                     #print(count)
                     count = 0
-                    print("x_max is " + str(x_max))
+                    #print("x_max is " + str(x_max))
                     for m in range(x2-1,x1,-1):
-                        for n in range(y2-1,-1,-1):
+                        for n in range(y2-1,y1,-1):
                             count = count +1
                             #print(m,n)
                             #if(masks[0][n][m] ==1):
                             #if(nump[n][m] ==1):
                             if(masks_color_summand[n][m][0] != 0):
-                                print(masks[0][n][m])
+                                #print(masks[0][n][m])
                                 m_max = (m,n)
                                 break
                         if(m_max!=0):
                             break
-                    print("m_max is(from right) " + str(m_max))
+                    #print("m_max is(from right) " + str(m_max))
                     
                     m_y_max = 0
                     for i in range(y2,y1,-1):
@@ -515,29 +484,31 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
 
                     right_y_values = []
                     for i in range(0,len(y_values)):
-                        if(y_values[i]>m_max[1]):
+                        #if(y_values[i]>m_max[1]):
+                        if(y_values[i]>(y1+y2)/2):
                             right_y_values.append(y_values[i])
-                    print("right_y: " +str(right_y_values))
+                    #print("right_y: " +str(right_y_values))
 
 
 
 
                     right_x_values = []
                     for i in range(0,len(right_y_values)):
-                        for m in range(x2-1,0,-1):
+                        for m in range(x2-1,x1,-1):
                             if(masks_color_summand[right_y_values[i]][m][0] !=0):
                                 right_x_values.append(m)
                                 break
                             
-                    print("right_x: " +str(right_x_values))
+                    #print("right_x: " +str(right_x_values))
 
 
 
                     left_y_values = []
                     for i in range(0,len(y_values)):
-                        if(y_values[i]>m_min[1]):
+                        #if(y_values[i]>m_min[1]):
+                        if(y_values[i]>(y1+y2)/2):
                             left_y_values.append(y_values[i])
-                    print("left_y: " + str(left_y_values))
+                    #print("left_y: " + str(left_y_values))
                     
                     
                     
@@ -550,41 +521,129 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
                             if(masks_color_summand[left_y_values[i]][m][0] !=0):
                                 left_x_values.append(m)
                                 break
-                    print("left_x: " +str(left_x_values))
-
-                    
-
-                    if(len(right_x_values)>1 and len(right_y_values)>1 and right_x_values[0] != right_x_values[-1]):
-
-                        right_xs = np.array(right_x_values)
-                        right_ys = np.array(right_y_values)
-                        
-                        m_right, b_right = best_fit_slope_and_intercept(right_xs,right_ys)
-
-                        bottom_x_right = int(round((y2-b_right)/ m_right,0))
-                        right_up_point = (right_x_values[0],int(round(m_right*right_x_values[0] +b_right,0)))
-                        #right_down_point = (right_x_values[-1],int(round(m_right*right_x_values[-1] +b_right,0)))
-                        right_down_point = (bottom_x_right,y2)
-                        cv2.line(img_numpy, right_up_point, right_down_point, (255,255,0), 5)
-                        
-
+                    #print("left_x: " +str(left_x_values))
+					
+                 
 
                     if(len(left_x_values)>1 and len(left_y_values)>1 and left_x_values[0] != left_x_values[-1] ):
-                        left_xs = np.array(left_x_values)
-                        left_ys = np.array(left_y_values)
+                        left = []
+                        
+                        for i in range(0,len(left_x_values)):
+                            le = (left_x_values[i], left_y_values[i])
+                        
+                            left.append(le)
+                        
+                        measurements = np.asarray(left)
+
+                        initial_state_mean = [measurements[0, 0],0,measurements[0, 1],0]
+
+                        transition_matrix = [[1, 1, 0, 0],[0, 1, 0, 0],[0, 0, 1, 1],[0, 0, 0, 1]]
+
+                        observation_matrix = [[1, 0, 0, 0],[0, 0, 1, 0]]
+
+                        kf1 = KalmanFilter(transition_matrices = transition_matrix,observation_matrices = observation_matrix,initial_state_mean = initial_state_mean)
+
+                        kf1 = kf1.em(measurements, n_iter=5)
+
+                        (smoothed_state_means, smoothed_state_covariances) = kf1.smooth(measurements)
+
+
+
+                        rel = list(map(list, zip(*smoothed_state_means))) 
+
+                        left_x = rel[0]
+                        #print("len of x " + str(left_x))
+                        left_y = rel[2]
+                        #print("len of y " + str(left_y))
+						
+						
+						
+						
+                        #left_xs = np.array(left_x_values)
+                        #left_ys = np.array(left_y_values)
+                        left_xs = np.array(left_x)
+                        left_ys = np.array(left_y)
+						
                         
                         m_left, b_left = best_fit_slope_and_intercept(left_xs, left_ys)
                         bottom_x_left =  int(round((y2-b_left)/ m_left,0))
                         left_up_point = (left_x_values[0],int(round(m_left*left_x_values[0] +b_left,0)))
+
+                        
                         #left_down_point = (left_x_values[-1],int(round(m_left*left_x_values[-1] +b_left,0)))
                         left_down_point = (bottom_x_left,y2)
 
+                        #print("left up " +str(left_up_point))
+                        #print("left down " +str(left_down_point))
+
                         cv2.line(img_numpy, left_up_point, left_down_point, (255,255,0), 5)
+                        points.append(left_up_point)
+                        points.append(left_down_point)
+
+
+
+                    if(len(right_x_values)>1 and len(right_y_values)>1 and right_x_values[0] != right_x_values[-1]):
+					
+                        right = []
                         
-                    
-                    print("m_y_max is(from bottom) " + str(m_y_max))
-                    print(x_max)
-                    #print(masks[0][193][8])
+                        for i in range(0,len(right_x_values)):
+                            ri = (right_x_values[i], right_y_values[i])
+                        
+                            right.append(ri)
+                        
+                        measurements = np.asarray(right)
+
+                        initial_state_mean = [measurements[0, 0],0,measurements[0, 1],0]
+
+                        transition_matrix = [[1, 1, 0, 0],[0, 1, 0, 0],[0, 0, 1, 1],[0, 0, 0, 1]] 
+
+                        observation_matrix = [[1, 0, 0, 0],[0, 0, 1, 0]]
+
+                        kf1 = KalmanFilter(transition_matrices = transition_matrix,observation_matrices = observation_matrix,initial_state_mean = initial_state_mean)
+
+                        kf1 = kf1.em(measurements, n_iter=5)
+
+                        (smoothed_state_means, smoothed_state_covariances) = kf1.smooth(measurements)
+
+
+
+                        rel = list(map(list, zip(*smoothed_state_means))) 
+
+                        right_x = rel[0]
+                        right_y = rel[2]
+                        right_xs = np.array(right_x)
+                        right_ys = np.array(right_y)
+					
+					
+
+                        #right_xs = np.array(right_x_values)
+                        #right_ys = np.array(right_y_values)
+                        
+                        m_right, b_right = best_fit_slope_and_intercept(right_xs,right_ys)
+
+                        #bottom_x_right = int(round((y2-b_right)/ m_right,0))
+                        right_up_point = (right_x_values[0],int(round(m_right*right_x_values[0] +b_right,0)))
+                        #right_down_point = (right_x_values[-1],int(round(m_right*right_x_values[-1] +b_right,0)))
+
+                        model = polyfit(right_y_values,right_x_values,1)
+                        predict = poly1d(model)
+                        bottom_x_right = predict(y2)
+                        right_down_point = (int(bottom_x_right),y2)
+
+                        #print("right up " +str(right_up_point))
+                        #print("right down " +str(right_down_point))
+
+                        cv2.line(img_numpy, right_up_point, right_down_point, (255,255,0), 5)
+                        points.append(right_up_point)
+                        points.append(right_down_point)
+                        f = open("positions.txt", "a")
+                        f.write(str(left_up_point[0])+","+str(left_up_point[1])+",")
+                        f.write(str(left_down_point[0])+","+str(left_down_point[1])+",")
+                        f.write(str(right_down_point[0])+","+str(right_down_point[1])+",")
+                        f.write(str(right_up_point[0])+","+str(right_up_point[1]) + "\n")
+						
+                        f.close()
+
                     #cv2.line(img_numpy, m_min, m_y_max, (255,0,0), 2)
                     #cv2.line(img_numpy, m_max, m_y_max, (255,0,0), 2)
                     
@@ -596,7 +655,7 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
             if args.display_text:
                 _class = cfg.dataset.class_names[classes[j]]
                 n_names.append(_class)
-                print("names " + str(n_names))
+                #print("names " + str(n_names))
                 text_str = '%s: %.2f' % (_class, score) if args.display_scores else _class
 
                 font_face = cv2.FONT_HERSHEY_DUPLEX
@@ -645,6 +704,11 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
     #del masks_color_cumul
     return img_numpy
 
+
+
+#def takepoints(points):
+    #print(points)
+    
 def prep_benchmark(dets_out, h, w):
     with timer.env('Postprocess'):
         t = postprocess(dets_out, w, h, crop_masks=args.crop, score_threshold=args.score_threshold)
@@ -771,7 +835,7 @@ def _bbox_iou(bbox1, bbox2, iscrowd=False):
 
 
 def prep_metrics(ap_data, dets, img, gt, gt_masks, h, w, num_crowd, image_id, detections:Detections=None):
-    print("detections are " + str(detections))
+    #print("detections are " + str(detections))
     """ Returns a list of APs for this image, with each element being for a class  """
     if not args.output_coco_json:
         with timer.env('Prepare gt'):
@@ -986,6 +1050,7 @@ def evalimage(net:Yolact, path:str, save_path:str=None, dim= None):
     temp_numpy = cv2.imread(path)
     #temp_numpy = temp_numpy[55:145,195:295]
     #print(temp_numpy.shape)
+    print("ccccc" + str(dim))
     
     relevant_numpy = temp_numpy[int(dim[2]):int(dim[3]),int(dim[0]):int(dim[1])]
     cv2.imwrite("temp/temp.jpg",relevant_numpy)
@@ -1013,10 +1078,10 @@ def evalimage(net:Yolact, path:str, save_path:str=None, dim= None):
 	
     frame1 = torch.from_numpy(cv2.imread(path)).cuda().float()
     frame = torch.from_numpy(temp_numpy).cuda().float()
-    print(frame.shape)
+    #print(frame.shape)
     
-    print("3rd")
-    print(len(frame[0]))
+    #print("3rd")
+    #print(len(frame[0]))
     #batch = FastBaseTransform()(frame1.unsqueeze(0))
     batch = FastBaseTransform()(frame.unsqueeze(0))
     #frame  = frame.unsqueeze(0)
@@ -1037,18 +1102,18 @@ def evalimage(net:Yolact, path:str, save_path:str=None, dim= None):
     else:
         cv2.imwrite(save_path, img_numpy)
 
-def evalimages(net:Yolact, input_folder:str, output_folder:str):
+def evalimages(net:Yolact, input_folder:str, output_folder:str, dim= None):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    print()
+ 
     for p in Path(input_folder).glob('*'): 
         path = str(p)
         name = os.path.basename(path)
         name = '.'.join(name.split('.')[:-1]) + '.png'
         out_path = os.path.join(output_folder, name)
 
-        evalimage(net, path, out_path)
+        evalimage(net, path, out_path, dim=dim)
         print(path + ' -> ' + out_path)
     print('Done.')
 
@@ -1323,7 +1388,7 @@ def evaluate(net:Yolact, dataset, dim = None, train_mode=False):
         inp, out = args.images.split(':')
         print("inp " + str(inp) )
         print("out " + str(out))
-        evalimages(net, inp, out)
+        evalimages(net, inp, out, dim =dim)
         return
     elif args.video is not None:#for a video
         print("1st_3rd")
@@ -1489,16 +1554,41 @@ def print_maps(all_maps):
 
 import sys
 
+
+
 if __name__ == '__main__':
+
+    file = open("positions.txt","w")
+    file.close()
+
+    
     print("start")
     parse_args()
-    print(args.dimension)
-    args.dimension = args.dimension.split(",")
-    #print(args.dimension)
+    dimlist = []
+
+    if args.dimension is not None:
+        dimensions = args.dimension
+        print(dimensions)
+        #args.dimension = args.dimension.split(",")
+        dimensions = dimensions[1:]
+        dimensions = dimensions[:-1]
+        dimensions = dimensions.split("]")
+        dimensions.pop()
+        for i in range(0,len(dimensions)):
+            temp = dimensions[i].strip(",")
+            temp = temp[1:]
+            temp = temp.split(",")
+            dimlist.append(temp)
+	
+        
+        
+        print(dimlist)
   
 
     if args.config is not None:
         set_cfg(args.config)
+		
+    
 
     if args.trained_model == 'interrupt':
         args.trained_model = SavePath.get_interrupt('weights/')
@@ -1550,15 +1640,52 @@ if __name__ == '__main__':
 
         if args.cuda:
             net = net.cuda()
-        
-        dimension = args.dimension
-        print(dimension)
-
-        evaluate(net, dataset, dimension)
-
+        if args.dimension is not None:
+            for i in range(0,len(dimlist)):
+                temp_dim = str(dimlist[i])
+                temp_dim = temp_dim[1:]
+                temp_dim = temp_dim[:-1]
+                temp_dim = temp_dim.replace("'","")
+                print(temp_dim)
+                dimension = temp_dim.split(",")
+                print(dimension)
+                print(type(dimension))
+			
+            #dimension = args.dimension
+           
+                evaluate(net, dataset, dimension)
+            
+               
+ 
+        else:
+            evaluate(net, dataset)
+        '''
+        file1 = open('positions.txt', 'r')
+        Lines = file1.readlines()
+        pos = []
+        for line in Lines:
+            points = line.split(",")
+            pos.append(points)
+        pos.reverse()
+        final_pred = []	
+        if(len(pos)>3):
+            if(len(pos[-1])!=8):
+                for i in range(0,len(pos[0])):
+                    evalu_x = []
+                    evalu_y = []
+                    for k in range(0,len(pos)):
+                        evalu_y.append(int(pos[k][i]))
+                        evalu_x.append(k)
+                    model = polyfit(evalu_x,evalu_y,2)
+                    predict = poly1d(model)
+                    final_pred.append(predict(60))
+            if((50<final_pred[2]<650 or 50<final_pred[4]<650) and (500<final_pred[3]<800 or 500<final_pred[5]<800)):
+                cv2.putText(img,"warning",(10,50),cv2.FONT_HERSHEY_SIMPLEX,fontScale=2.5,thickness=8,color=(0,0,0))
+                
+        '''
         #(xmin,ymin) (xmax,ymax)
         
         #(242,313) (470,475)
 
         #(206,82) (297,139)
-
+   
